@@ -21,8 +21,8 @@ passphrase = 'zzz'
 
 auth_client = gdax.AuthenticatedClient(key, b64secret, passphrase)
 
-def get_account_balance(auth_client):
-    my_accounts = auth_client.get_accounts()
+def get_account_balance(client):
+    my_accounts = client.get_accounts()
     usd = None
     eth = None
     btc = None
@@ -39,13 +39,13 @@ def get_account_balance(auth_client):
             eth = float(my_account['balance'])
         elif my_account['currency'] == 'BCH':
             bch = float(my_account['balance'])
-    btc_price = float(auth_client.get_product_ticker('BTC-USD')['price'])
-    ltc_price = float(auth_client.get_product_ticker('LTC-USD')['price'])
-    eth_price = float(auth_client.get_product_ticker('ETH-USD')['price'])
-    bch_price = float(auth_client.get_product_ticker('BCH-USD')['price'])
+    btc_price = float(client.get_product_ticker('BTC-USD')['price'])
+    ltc_price = float(client.get_product_ticker('LTC-USD')['price'])
+    eth_price = float(client.get_product_ticker('ETH-USD')['price'])
+    bch_price = float(client.get_product_ticker('BCH-USD')['price'])
 
     account_summary = usd + btc_price * btc + ltc_price * ltc + eth_price * eth + bch_price * bch
-    print('my acount balance is {0:.2f} usd'.format(account_summary))
+    print('my account balance is {0:.2f} usd'.format(account_summary))
     return usd, eth, btc, ltc, bch
 
 
@@ -59,7 +59,7 @@ mid = (float(auth_client.get_product_24hr_stats('BTC-USD')['high'])
        + float(auth_client.get_product_24hr_stats('BTC-USD')['low'])) / 2.0
 last = mid
 print('last 24 hrs mid: {}'.format(last))
-buytoggle = False
+toggle = False
 while True:
     print('last btc price is {}'.format(last))
     curr_btc_price = float(auth_client.get_product_ticker('BTC-USD')['price'])
@@ -67,30 +67,29 @@ while True:
     print('current btc price is {}'.format(curr_btc_price))
     curr_usd, _, curr_btc, _, _ = get_account_balance(auth_client)
     time.sleep(5)
-    if curr_btc_price > (last * (1 + notify_margin)) and not buytoggle:
+    if curr_btc_price > (last * (1 + notify_margin)) and not toggle:
         if curr_btc > exchange_amount:
             selling_price = curr_btc_price * (1 + profit_margin)
-            print('trying to sell {:.6f} btc @ {:.6f}'.format(exchange_amount, selling_price))
-            auth_client.sell(price=str(curr_btc_price * (1 + profit_margin)),
-                             size=str(exchange_amount),
-                             product_id='BTC-USD')
+            print('trying to sell {:.3f} btc @ {:.2f}'.format(exchange_amount, selling_price))
+            response = auth_client.sell(price='{:.2f}'.format(selling_price),
+                                        size='{:.3f}'.format(exchange_amount),
+                                        product_id='BTC-USD')
             last = curr_btc_price
-            buytoggle = True
+            toggle = True
         else:
             print('insufficient btc')
-    elif curr_btc_price < (last * (1 - notify_margin)) and buytoggle:
+    elif curr_btc_price < (last * (1 - notify_margin)) and toggle:
         assert (1 - profit_margin) > 0
         if curr_usd > (exchange_amount * curr_btc_price * (1 - profit_margin)):
             buying_price = curr_btc_price * (1 - profit_margin)
-            print('trying to buy {:.6f} btc @ {:.6f}'.format(exchange_amount, buying_price))
-            auth_client.buy(price=str(curr_btc_price * (1 - profit_margin)),
-                            size=str(exchange_amount),
-                            product_id='BTC-USD')
+            print('trying to buy {:.3f} btc @ {:.2f}'.format(exchange_amount, buying_price))
+            response = auth_client.buy(price='{:.2f}'.format(buying_price),
+                                       size='{:.3f}'.format(exchange_amount),
+                                       product_id='BTC-USD')
             last = curr_btc_price
-            buytoggle = False
+            toggle = False
         else:
             print('insufficient usd')
     time.sleep(15)
-
 
 ```
